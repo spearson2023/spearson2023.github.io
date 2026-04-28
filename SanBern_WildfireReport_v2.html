@@ -694,7 +694,7 @@
 
       // ── MAP IMAGE via ArcGIS Print Service ──
       setStatus('Fetching map image…', 'rgba(255,255,255,0.5)');
-      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property', attr.OBJECTID, attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb || '');
+      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property', attr.OBJECTID, attr.ParcelNumb || '');
 
       // ── PROPERTY ────────────────────────────
       document.getElementById('fParcel').innerHTML    = fmt(attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb);
@@ -796,11 +796,10 @@
     mapWrap.innerHTML = '<div class="map-loading">Loading map with parcel overlay…</div>';
 
     // ── APN conversion ─────────────────────────────────────────────
-    // Building layer: ParcelNbr_AssessorDataJoin = "349071230000" (12 digits)
-    // Parcel layer:   APN = "349071230" (9 digits, first 9 of the 12-digit value)
-    const apnRaw    = String(parcelNbr || '').replace(/\D/g, '');
-    const apn9      = apnRaw.substring(0, 9);
-    const apnExpr   = apn9 ? `APN = '${apn9}'` : '1=0';
+    // Building layer: ParcelNumb = "034912290" (9-digit zero-padded)
+    // Parcel layer:   APN = "034912290" (identical format — direct match)
+    const apn9       = String(parcelNbr || '').trim();
+    const apnExpr    = apn9 ? `APN = '${apn9}'` : '1=0';
     const notApnExpr = apn9 ? `APN <> '${apn9}'` : '1=1';
 
     // ── Web Map JSON — four layer stack ───────────────────────────
