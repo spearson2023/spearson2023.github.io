@@ -694,7 +694,7 @@
 
       // ── MAP IMAGE via ArcGIS Print Service ──
       setStatus('Fetching map image…', 'rgba(255,255,255,0.5)');
-      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property');
+      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property', attr.OBJECTID);
 
       // ── PROPERTY ────────────────────────────
       document.getElementById('fParcel').innerHTML    = fmt(attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb);
@@ -755,7 +755,7 @@
     btn.disabled = false;
   }
 
-  async function loadMapImage(geom, addr) {
+  async function loadMapImage(geom, addr, selectedOid) {
     const mapWrap = document.getElementById('rptMapWrap');
 
     // Compute centroid from polygon rings
@@ -779,18 +779,22 @@
     const xmax = cx + buf, ymax = cy + buf;
 
     // ── Build Web Map JSON for AGOL print service ───────────────────
-    // Layers: World Imagery basemap + Building Footprints feature layer
-    // Selected feature gets a cyan highlight; all others render in default grey
+    // Layer stack (bottom to top):
+    //   1. World Imagery basemap
+    //   2. Parcels — thin white outline, transparent fill
+    //   3. Building Footprints — all in semi-transparent grey
+    //   4. Selected building — cyan highlight rendered via definition query
     const webMapJson = {
       mapOptions: {
         extent: { xmin, ymin, xmax, ymax, spatialReference: { wkid: 4326 } },
         spatialReference: { wkid: 102100 }
       },
       operationalLayers: [
+
+        // ── Layer 1: Parcels — outline only, no fill ──────────────
         {
-          // Building Footprints layer — all features in default grey
-          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2',
-          opacity: 1,
+          url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/San_Bernardino_County_Parcel_Dataset/FeatureServer/0',
+          opacity: 0.9,
           minScale: 0,
           maxScale: 0,
           layerDefinition: {
@@ -800,13 +804,73 @@
                 symbol: {
                   type: 'esriSFS',
                   style: 'esriSFSSolid',
-                  color: [180, 180, 180, 80],
-                  outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [80, 80, 80, 200], width: 1 }
+                  color: [0, 0, 0, 0],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [255, 255, 255, 220],
+                    width: 1.5
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        // ── Layer 2: All building footprints — grey fill ──────────
+        {
+          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: `OBJECTID <> ${selectedOid}`,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [180, 180, 180, 100],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [100, 100, 100, 200],
+                    width: 0.8
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        // ── Layer 3: Selected building — cyan highlight ───────────
+        {
+          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: `OBJECTID = ${selectedOid}`,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [0, 210, 255, 100],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [0, 210, 255, 255],
+                    width: 2.5
+                  }
                 }
               }
             }
           }
         }
+
       ],
       baseMap: {
         baseMapLayers: [
