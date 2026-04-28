@@ -694,7 +694,7 @@
 
       // ── MAP IMAGE via ArcGIS Print Service ──
       setStatus('Fetching map image…', 'rgba(255,255,255,0.5)');
-      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property', attr.OBJECTID);
+      await loadMapImage(geom, attr.FULLADDR || attr.ParcelNbr_AssessorDataJoin || 'Property', attr.OBJECTID, attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb || '');
 
       // ── PROPERTY ────────────────────────────
       document.getElementById('fParcel').innerHTML    = fmt(attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb);
@@ -755,28 +755,251 @@
     btn.disabled = false;
   }
 
-  async function loadMapImage(geom, addr, selectedOid) {
+  async function loadMapImage(geom, addr, selectedOid, parcelNbr) {
     const mapWrap = document.getElementById('rptMapWrap');
 
-    // Compute centroid from polygon rings
-    let cx, cy;
+    // ── Compute envelope from all rings ────────────────────────────
+    let envXmin = Infinity, envYmin = Infinity;
+    let envXmax = -Infinity, envYmax = -Infinity;
+    let cx = 0, cy = 0, ptCount = 0;
+
     if (geom.rings) {
-      const ring = geom.rings[0];
-      cx = ring.reduce((s,p) => s+p[0], 0) / ring.length;
-      cy = ring.reduce((s,p) => s+p[1], 0) / ring.length;
+      for (const ring of geom.rings) {
+        for (const [px, py] of ring) {
+          if (px < envXmin) envXmin = px;
+          if (px > envXmax) envXmax = px;
+          if (py < envYmin) envYmin = py;
+          if (py > envYmax) envYmax = py;
+          cx += px; cy += py; ptCount++;
+        }
+      }
+      cx /= ptCount; cy /= ptCount;
     } else if (geom.x !== undefined) {
       cx = geom.x; cy = geom.y;
+      envXmin = cx - 0.0005; envXmax = cx + 0.0005;
+      envYmin = cy - 0.0005; envYmax = cy + 0.0005;
     } else {
       mapWrap.innerHTML = '<div class="map-loading">Map not available</div>';
       return;
     }
 
+    // ── Proportional buffer — 60% of the envelope width/height ────
+    // Ensures full parcel is always visible with generous context
+    const wBuf = Math.max((envXmax - envXmin) * 0.6, 0.0006);
+    const hBuf = Math.max((envYmax - envYmin) * 0.6, 0.0006);
+
+    const xmin = envXmin - wBuf;
+    const xmax = envXmax + wBuf;
+    const ymin = envYmin - hBuf;
+    const ymax = envYmax + hBuf;
+
     mapWrap.innerHTML = '<div class="map-loading">Loading map with parcel overlay…</div>';
 
-    // ── Tighter buffer: ~0.0008 degrees ≈ 80m ──────────────────────
-    const buf = 0.0008;
-    const xmin = cx - buf, ymin = cy - buf;
-    const xmax = cx + buf, ymax = cy + buf;
+    // ── APN definition expression ──────────────────────────────────
+    // ParcelNbr_AssessorDataJoin is stored as "349112070000"
+    // APN field in parcel layer may be "0349-112-07-0000" or similar
+    // Use both raw and stripped formats for robustness
+    const apnRaw   = String(parcelNbr || '').replace(/\D/g, '');
+    const apnExpr  = apnRaw
+      ? `APN = '${parcelNbr}' OR APN = '${apnRaw}'`
+      : '1=0';
+    const notApnExpr = apnRaw
+      ? `APN <> '${parcelNbr}' AND APN <> '${apnRaw}'`
+      : '1=1';
+
+    // ── Web Map JSON — four layer stack ───────────────────────────
+    const webMapJson = {
+      mapOptions: {
+        extent: { xmin, ymin, xmax, ymax, spatialReference: { wkid: 4326 } },
+        spatialReference: { wkid: 102100 }
+      },
+      operationalLayers: [
+
+        // Layer 1: All parcels except selected — white outline, no fill
+        {
+          url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/San_Bernardino_County_Parcel_Dataset/FeatureServer/0',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: notApnExpr,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [0, 0, 0, 0],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [255, 255, 255, 210],
+                    width: 1.2
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        // Layer 2: Selected parcel — red outline, thicker, no fill
+        {
+          url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/San_Bernardino_County_Parcel_Dataset/FeatureServer/0',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: apnExpr,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [0, 0, 0, 0],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [220, 30, 30, 255],
+                    width: 2.8
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        // Layer 3: All building footprints except selected — grey outline, no fill
+        {
+          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: `OBJECTID <> ${selectedOid}`,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [0, 0, 0, 0],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [200, 200, 200, 200],
+                    width: 0.8
+                  }
+                }
+              }
+            }
+          }
+        },
+
+        // Layer 4: Selected building — white outline only, transparent fill
+        {
+          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2',
+          opacity: 1,
+          minScale: 0,
+          maxScale: 0,
+          layerDefinition: {
+            definitionExpression: `OBJECTID = ${selectedOid}`,
+            drawingInfo: {
+              renderer: {
+                type: 'simple',
+                symbol: {
+                  type: 'esriSFS',
+                  style: 'esriSFSSolid',
+                  color: [0, 0, 0, 0],
+                  outline: {
+                    type: 'esriSLS',
+                    style: 'esriSLSSolid',
+                    color: [255, 255, 255, 255],
+                    width: 2.0
+                  }
+                }
+              }
+            }
+          }
+        }
+
+      ],
+      baseMap: {
+        baseMapLayers: [
+          {
+            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
+            opacity: 1
+          }
+        ],
+        title: 'World Imagery'
+      },
+      exportOptions: {
+        outputSize: [840, 300],
+        dpi: 96
+      }
+    };
+
+    // ── Call AGOL print service ────────────────────────────────────
+    const printUrl = 'https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute';
+    const params = new URLSearchParams({
+      Web_Map_as_JSON: JSON.stringify(webMapJson),
+      Format: 'PNG32',
+      Layout_Template: 'MAP_ONLY',
+      f: 'json'
+    });
+
+    try {
+      const res  = await fetch(printUrl, { method: 'POST', body: params });
+      const data = await res.json();
+      const imgUrl = data?.results?.[0]?.value?.url;
+
+      if (!imgUrl) throw new Error('No image URL in print service response');
+
+      mapWrap.innerHTML = '';
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.display = 'block';
+      img.onload = () => {
+        mapWrap.appendChild(img);
+        const lbl = document.createElement('div');
+        lbl.className = 'map-label';
+        lbl.textContent = `Satellite imagery · ${addr}`;
+        mapWrap.appendChild(lbl);
+      };
+      img.onerror = () => {
+        mapWrap.innerHTML = '<div class="map-loading">Map imagery unavailable.</div>';
+      };
+      img.src = imgUrl;
+
+    } catch(e) {
+      // Fallback — direct World Imagery at computed extent
+      console.warn('Print service failed, using fallback:', e);
+      const fallbackUrl =
+        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?' +
+        `bbox=${xmin},${ymin},${xmax},${ymax}&bboxSR=4326&size=840,300&imageSR=4326&format=png&f=image`;
+
+      mapWrap.innerHTML = '';
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.onload = () => {
+        mapWrap.appendChild(img);
+        const lbl = document.createElement('div');
+        lbl.className = 'map-label';
+        lbl.textContent = `Satellite imagery · ${addr}`;
+        mapWrap.appendChild(lbl);
+      };
+      img.onerror = () => {
+        mapWrap.innerHTML = '<div class="map-loading">Map imagery unavailable.</div>';
+      };
+      img.src = fallbackUrl;
+    }
+  }
 
     // ── Build Web Map JSON for AGOL print service ───────────────────
     // Layer stack (bottom to top):
