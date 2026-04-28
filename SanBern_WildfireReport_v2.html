@@ -795,17 +795,13 @@
 
     mapWrap.innerHTML = '<div class="map-loading">Loading map with parcel overlay…</div>';
 
-    // ── APN definition expression ──────────────────────────────────
-    // ParcelNbr_AssessorDataJoin is stored as "349112070000"
-    // APN field in parcel layer may be "0349-112-07-0000" or similar
-    // Use both raw and stripped formats for robustness
-    const apnRaw   = String(parcelNbr || '').replace(/\D/g, '');
-    const apnExpr  = apnRaw
-      ? `APN = '${parcelNbr}' OR APN = '${apnRaw}'`
-      : '1=0';
-    const notApnExpr = apnRaw
-      ? `APN <> '${parcelNbr}' AND APN <> '${apnRaw}'`
-      : '1=1';
+    // ── APN conversion ─────────────────────────────────────────────
+    // Building layer: ParcelNbr_AssessorDataJoin = "349071230000" (12 digits)
+    // Parcel layer:   APN = "349071230" (9 digits, first 9 of the 12-digit value)
+    const apnRaw    = String(parcelNbr || '').replace(/\D/g, '');
+    const apn9      = apnRaw.substring(0, 9);
+    const apnExpr   = apn9 ? `APN = '${apn9}'` : '1=0';
+    const notApnExpr = apn9 ? `APN <> '${apn9}'` : '1=1';
 
     // ── Web Map JSON — four layer stack ───────────────────────────
     const webMapJson = {
@@ -915,7 +911,7 @@
                     type: 'esriSLS',
                     style: 'esriSLSSolid',
                     color: [255, 255, 255, 255],
-                    width: 2.0
+                    width: 1.2
                   }
                 }
               }
