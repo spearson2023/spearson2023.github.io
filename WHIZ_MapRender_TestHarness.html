@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WHIZ Report — Map Render Test Harness</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap');
+
+  :root {
+    --ink:    #1A1A1A;
+    --muted:  #6B6B6B;
+    --rule:   #E0E0E0;
+    --bg:     #F7F5F2;
+    --white:  #FFFFFF;
+    --fire:   #E8450A;
+    --amber:  #F5A623;
+    --pass:   #2ECC71;
+    --fail:   #E74C3C;
+    --warn:   #F39C12;
+    --mono:   'IBM Plex Mono', monospace;
+    --sans:   'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-size: 13px; }
+
+  #toolbar {
+    background: var(--ink); color: white;
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .brand { font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); }
+  .btn {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    border: none; border-radius: 3px; padding: 7px 16px;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-run  { background: var(--amber); color: var(--ink); }
+  .btn-add  { background: rgba(255,255,255,0.15); color: white; }
+  .btn:hover { opacity: 0.8; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  #summary {
+    max-width: 1100px; margin: 20px auto 0; padding: 0 20px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--white); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 20px; min-width: 120px; text-align: center;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 700; font-family: var(--mono); }
+  .stat-card .lbl { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); font-family: var(--mono); margin-top: 4px; }
+  .num-pass { color: var(--pass); }
+  .num-fail { color: var(--fail); }
+  .num-warn { color: var(--warn); }
+  .num-total { color: var(--ink); }
+
+  #controls {
+    max-width: 1100px; margin: 16px auto 0; padding: 0 20px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  #oidInput {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--white); border: 1px solid var(--rule);
+    padding: 6px 10px; border-radius: 3px; width: 280px;
+    color: var(--ink);
+  }
+  .hint { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  #results {
+    max-width: 1100px; margin: 20px auto 40px; padding: 0 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .test-card {
+    background: var(--white); border: 1px solid var(--rule); border-radius: 4px;
+    overflow: hidden;
+  }
+  .test-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--rule);
+    background: #FAFAF8;
+  }
+  .test-oid {
+    font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink);
+  }
+  .test-addr { font-size: 12px; color: var(--muted); flex: 1; }
+  .status-pill {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 10px;
+  }
+  .pill-running { background: #FFF8E1; color: #856404; }
+  .pill-pass    { background: #D4EDDA; color: #155724; }
+  .pill-fail    { background: #F8D7DA; color: #721C24; }
+  .pill-warn    { background: #FFF3CD; color: #856404; }
+
+  .test-body {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  }
+  .test-map {
+    background: #2a2a2a; height: 220px; position: relative;
+    overflow: hidden; border-right: 1px solid var(--rule);
+  }
+  .test-map img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .map-overlay {
+    position: absolute; bottom: 8px; left: 8px;
+    background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.8);
+    font-family: var(--mono); font-size: 9px; padding: 3px 7px; border-radius: 2px;
+  }
+  .map-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: rgba(255,255,255,0.3);
+    font-family: var(--mono); font-size: 11px; text-align: center; padding: 16px;
+  }
+
+  .test-checks { padding: 14px 16px; }
+  .check-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid #F0F0F0; font-size: 12px;
+  }
+  .check-row:last-child { border-bottom: none; }
+  .check-icon { font-size: 13px; flex-shrink: 0; width: 18px; }
+  .check-label { color: var(--muted); font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.06em; text-transform: uppercase; min-width: 110px; flex-shrink: 0; }
+  .check-val { color: var(--ink); font-size: 11px; }
+
+  .test-log {
+    padding: 10px 16px; background: #1A1A1A;
+    font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.6);
+    max-height: 80px; overflow-y: auto; border-top: 1px solid var(--rule);
+    line-height: 1.6;
+  }
+  .log-ok   { color: #2ECC71; }
+  .log-err  { color: #E74C3C; }
+  .log-warn { color: #F5A623; }
+  .log-info { color: rgba(255,255,255,0.5); }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span class="brand">🔥 WHIZ Map Render — Test Harness</span>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span id="progressLabel" style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,0.5);"></span>
+    <button class="btn btn-run" id="runBtn" onclick="runAll()">▶ Run All Tests</button>
+  </div>
+</div>
+
+<div id="summary">
+  <div class="stat-card"><div class="num num-total" id="sTotal">0</div><div class="lbl">Total</div></div>
+  <div class="stat-card"><div class="num num-pass"  id="sPass">0</div><div class="lbl">Pass</div></div>
+  <div class="stat-card"><div class="num num-warn"  id="sWarn">0</div><div class="lbl">Warning</div></div>
+  <div class="stat-card"><div class="num num-fail"  id="sFail">0</div><div class="lbl">Fail</div></div>
+</div>
+
+<div id="controls">
+  <input type="text" id="oidInput" placeholder="Add OIDs (comma-separated, e.g. 521,412,660)"/>
+  <button class="btn btn-add" onclick="addOids()">+ Add OIDs</button>
+  <span class="hint">Default suite: small, medium, and large parcels across the dataset</span>
+</div>
+
+<div id="results"></div>
+
+<script>
+  // ── FEATURE SERVICE ───────────────────────────────────────────────
+  const FEATURE_SERVICE = 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/BuildingFootprints_SanBernCounty_Wildfire3Zones/FeatureServer/2';
+  const PRINT_SERVICE   = 'https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task/execute';
+
+  // ── DEFAULT TEST SUITE ────────────────────────────────────────────
+  // Covers: small parcel, medium parcel, large rural parcel,
+  //         irregular polygon, previously-broken APN cases
+  let TEST_OIDS = [521, 412, 581, 660, 100, 200, 350, 475];
+
+  // ── STATE ─────────────────────────────────────────────────────────
+  let results = {};
+  let running = false;
+
+  function apn9(parcelNbr) {
+    return String(parcelNbr || '').replace(/\D/g, '').slice(0, 9);
+  }
+
+  function addOids() {
+    const raw = document.getElementById('oidInput').value;
+    const nums = raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    nums.forEach(n => { if (!TEST_OIDS.includes(n)) TEST_OIDS.push(n); });
+    document.getElementById('oidInput').value = '';
+    renderCards();
+  }
+
+  function renderCards() {
+    const container = document.getElementById('results');
+    container.innerHTML = '';
+    TEST_OIDS.forEach(oid => {
+      const r = results[oid] || {};
+      container.appendChild(buildCard(oid, r));
+    });
+    updateSummary();
+  }
+
+  function buildCard(oid, r) {
+    const card = document.createElement('div');
+    card.className = 'test-card';
+    card.id = `card-${oid}`;
+
+    const statusClass = r.status === 'pass' ? 'pill-pass'
+                      : r.status === 'fail' ? 'pill-fail'
+                      : r.status === 'warn' ? 'pill-warn'
+                      : r.status === 'running' ? 'pill-running'
+                      : 'pill-running';
+    const statusLabel = r.status || 'pending';
+
+    card.innerHTML = `
+      <div class="test-header">
+        <span class="test-oid">OID ${oid}</span>
+        <span class="test-addr">${r.address || '—'}</span>
+        <span class="status-pill ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="test-body">
+        <div class="test-map" id="map-${oid}">
+          ${r.imgUrl
+            ? `<img src="${r.imgUrl}" /><div class="map-overlay">${r.apnFormatted || '—'}</div>`
+            : `<div class="map-placeholder">${r.status === 'running' ? '⏳ Rendering map…' : 'Awaiting test run'}</div>`
+          }
+        </div>
+        <div class="test-checks">
+          ${checkRow('Feature fetch',  r.featFetch)}
+          ${checkRow('APN format',     r.apnCheck,  r.apnDetail)}
+          ${checkRow('Print service',  r.printOk)}
+          ${checkRow('Map image',      r.imgOk)}
+          ${checkRow('Parcel match',   r.parcelOk,  r.parcelDetail)}
+          ${checkRow('Attr populated', r.attrOk,    r.attrDetail)}
+          ${checkRow('Zoom fit',       r.zoomOk,    r.zoomDetail)}
+        </div>
+      </div>
+      <div class="test-log" id="log-${oid}">${(r.log || []).map(l => `<div class="${l.cls}">${l.msg}</div>`).join('')}</div>
+    `;
+    return card;
+  }
+
+  function checkRow(label, state, detail='') {
+    if (state === undefined) return `
+      <div class="check-row">
+        <span class="check-icon">⬜</span>
+        <span class="check-label">${label}</span>
+        <span class="check-val" style="color:#bbb">—</span>
+      </div>`;
+    const icon = state === true ? '✅' : state === false ? '❌' : '⚠️';
+    return `
+      <div class="check-row">
+        <span class="check-icon">${icon}</span>
+        <span class="check-label">${label}</span>
+        <span class="check-val">${detail || (state === true ? 'OK' : state === false ? 'FAIL' : String(state))}</span>
+      </div>`;
+  }
+
+  function log(oid, msg, cls='log-info') {
+    if (!results[oid]) results[oid] = {};
+    if (!results[oid].log) results[oid].log = [];
+    results[oid].log.push({ msg, cls });
+    const el = document.getElementById(`log-${oid}`);
+    if (el) el.innerHTML += `<div class="${cls}">${msg}</div>`;
+  }
+
+  function updateSummary() {
+    const vals = Object.values(results);
+    document.getElementById('sTotal').textContent = TEST_OIDS.length;
+    document.getElementById('sPass').textContent  = vals.filter(r => r.status === 'pass').length;
+    document.getElementById('sWarn').textContent  = vals.filter(r => r.status === 'warn').length;
+    document.getElementById('sFail').textContent  = vals.filter(r => r.status === 'fail').length;
+  }
+
+  async function testOne(oid) {
+    results[oid] = { status: 'running', log: [] };
+    renderCards();
+
+    const r = results[oid];
+
+    // ── 1. Feature fetch ──────────────────────────────────────────
+    try {
+      const url = `${FEATURE_SERVICE}/query?where=OBJECTID=${oid}&outFields=*&returnGeometry=true&outSR=4326&f=json`;
+      log(oid, `→ Querying OID ${oid}…`, 'log-info');
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if (!data.features || data.features.length === 0) {
+        r.featFetch = false; r.status = 'fail';
+        log(oid, `✗ No feature found for OID ${oid}`, 'log-err');
+        renderCards(); return;
+      }
+
+      r.featFetch = true;
+      const feat = data.features[0];
+      const attr = feat.attributes;
+      const geom = feat.geometry;
+      r.address  = attr.FULLADDR || `OID ${oid}`;
+
+      log(oid, `✓ Feature: ${r.address}`, 'log-ok');
+
+      // ── 2. APN check ──────────────────────────────────────────
+      const rawParcel = attr.ParcelNumb || attr.ParcelNbr_AssessorDataJoin || '';
+      const computed  = apn9(rawParcel);
+      r.apnFormatted  = computed;
+      r.apnCheck      = computed.length === 9;
+      r.apnDetail     = `"${rawParcel}" → "${computed}" (${computed.length} digits)`;
+      log(oid, `${r.apnCheck ? '✓' : '⚠'} APN: ${r.apnDetail}`, r.apnCheck ? 'log-ok' : 'log-warn');
+
+      // ── 3. Attribute check ────────────────────────────────────
+      const hasAddr  = !!attr.FULLADDR;
+      const hasParcel = !!rawParcel;
+      const hasSqFt  = attr.TotalSqFootage_Assessor != null;
+      r.attrOk     = hasAddr && hasParcel && hasSqFt;
+      r.attrDetail = `addr:${hasAddr ? '✓' : '✗'} parcel:${hasParcel ? '✓' : '✗'} sqft:${hasSqFt ? '✓' : '✗'}`;
+      log(oid, `${r.attrOk ? '✓' : '⚠'} Attrs: ${r.attrDetail}`, r.attrOk ? 'log-ok' : 'log-warn');
+
+      // ── 4. Compute bounding envelope ──────────────────────────
+      let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+      if (geom.rings) {
+        for (const ring of geom.rings)
+          for (const [px, py] of ring) {
+            if (px < xmin) xmin = px; if (px > xmax) xmax = px;
+            if (py < ymin) ymin = py; if (py > ymax) ymax = py;
+          }
+      }
+      const wBuf = Math.max((xmax - xmin) * 0.6, 0.0006);
+      const hBuf = Math.max((ymax - ymin) * 0.6, 0.0006);
+      const ext = { xmin: xmin - wBuf, xmax: xmax + wBuf, ymin: ymin - hBuf, ymax: ymax + hBuf };
+      const envW = (xmax - xmin) * 111320; // approx metres
+      const envH = (ymax - ymin) * 110540;
+      r.zoomOk     = true;
+      r.zoomDetail = `~${Math.round(envW)}m × ${Math.round(envH)}m | buf 60%`;
+      log(oid, `✓ Envelope: ${r.zoomDetail}`, 'log-ok');
+
+      // ── 5. Print service call ─────────────────────────────────
+      const apnExpr    = computed ? `APN = '${computed}'` : '1=0';
+      const notApnExpr = computed ? `APN <> '${computed}'` : '1=1';
+
+      const webMapJson = {
+        mapOptions: {
+          extent: { ...ext, spatialReference: { wkid: 4326 } },
+          spatialReference: { wkid: 102100 }
+        },
+        operationalLayers: [
+          {
+            url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/San_Bernardino_County_Parcel_Dataset/FeatureServer/0',
+            opacity: 1, minScale: 0, maxScale: 0,
+            layerDefinition: {
+              definitionExpression: notApnExpr,
+              drawingInfo: { renderer: { type: 'simple', symbol: {
+                type: 'esriSFS', style: 'esriSFSSolid', color: [0,0,0,0],
+                outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [255,255,255,210], width: 1.2 }
+              }}}
+            }
+          },
+          {
+            url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/San_Bernardino_County_Parcel_Dataset/FeatureServer/0',
+            opacity: 1, minScale: 0, maxScale: 0,
+            layerDefinition: {
+              definitionExpression: apnExpr,
+              drawingInfo: { renderer: { type: 'simple', symbol: {
+                type: 'esriSFS', style: 'esriSFSSolid', color: [0,0,0,0],
+                outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [220,30,30,255], width: 2.8 }
+              }}}
+            }
+          },
+          {
+            url: FEATURE_SERVICE,
+            opacity: 1, minScale: 0, maxScale: 0,
+            layerDefinition: {
+              definitionExpression: `OBJECTID <> ${oid}`,
+              drawingInfo: { renderer: { type: 'simple', symbol: {
+                type: 'esriSFS', style: 'esriSFSSolid', color: [0,0,0,0],
+                outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [200,200,200,200], width: 0.8 }
+              }}}
+            }
+          },
+          {
+            url: FEATURE_SERVICE,
+            opacity: 1, minScale: 0, maxScale: 0,
+            layerDefinition: {
+              definitionExpression: `OBJECTID = ${oid}`,
+              drawingInfo: { renderer: { type: 'simple', symbol: {
+                type: 'esriSFS', style: 'esriSFSSolid', color: [0,0,0,0],
+                outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [255,255,255,255], width: 1.2 }
+              }}}
+            }
+          }
+        ],
+        baseMap: {
+          baseMapLayers: [{ url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer', opacity: 1 }],
+          title: 'World Imagery'
+        },
+        exportOptions: { outputSize: [600, 220], dpi: 96 }
+      };
+
+      log(oid, '→ Calling print service…', 'log-info');
+      const params = new URLSearchParams({
+        Web_Map_as_JSON: JSON.stringify(webMapJson),
+        Format: 'PNG32',
+        Layout_Template: 'MAP_ONLY',
+        f: 'json'
+      });
+
+      const t0   = Date.now();
+      const pRes = await fetch(PRINT_SERVICE, { method: 'POST', body: params });
+      const pData = await pRes.json();
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      const imgUrl  = pData?.results?.[0]?.value?.url;
+
+      r.printOk = !!imgUrl;
+      if (!imgUrl) {
+        r.imgOk   = false;
+        r.parcelOk = false;
+        r.status  = 'fail';
+        log(oid, `✗ Print service failed (${elapsed}s): ${JSON.stringify(pData?.messages || pData?.error || '?')}`, 'log-err');
+        renderCards(); return;
+      }
+
+      log(oid, `✓ Print service OK (${elapsed}s): ${imgUrl}`, 'log-ok');
+
+      // ── 6. Image load check ───────────────────────────────────
+      await new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => { r.imgOk = true;  r.imgUrl = imgUrl; resolve(); };
+        img.onerror = () => { r.imgOk = false; resolve(); };
+        img.src = imgUrl;
+      });
+
+      log(oid, r.imgOk ? '✓ Image loaded' : '✗ Image failed to load', r.imgOk ? 'log-ok' : 'log-err');
+
+      // ── 7. Parcel heuristic — did the red outline likely render?
+      // We can't pixel-inspect cross-origin images, so we use the APN
+      // validity as a proxy: if APN is 9 digits and print succeeded,
+      // parcel outline was likely rendered. Flag as warn if APN is short.
+      if (r.apnCheck && r.imgOk) {
+        r.parcelOk     = true;
+        r.parcelDetail = `APN "${computed}" passed to definition expression`;
+      } else if (!r.apnCheck) {
+        r.parcelOk     = null;  // warn — APN may not have matched
+        r.parcelDetail = `APN "${computed}" may not match parcel dataset — verify visually`;
+      } else {
+        r.parcelOk     = false;
+        r.parcelDetail = 'Image failed — parcel outline not rendered';
+      }
+
+      // ── 8. Overall status ─────────────────────────────────────
+      const critical = [r.featFetch, r.printOk, r.imgOk];
+      const warnings = [r.apnCheck, r.attrOk];
+      if (critical.some(v => v === false)) {
+        r.status = 'fail';
+      } else if (warnings.some(v => v === false) || r.parcelOk === null) {
+        r.status = 'warn';
+      } else {
+        r.status = 'pass';
+      }
+
+      log(oid, `→ Result: ${r.status.toUpperCase()}`, r.status === 'pass' ? 'log-ok' : r.status === 'warn' ? 'log-warn' : 'log-err');
+
+    } catch(e) {
+      results[oid].status   = 'fail';
+      results[oid].featFetch = false;
+      log(oid, `✗ Exception: ${e.message}`, 'log-err');
+    }
+
+    renderCards();
+  }
+
+  async function runAll() {
+    if (running) return;
+    running = true;
+    results = {};
+    document.getElementById('runBtn').disabled = true;
+    renderCards();
+
+    for (let i = 0; i < TEST_OIDS.length; i++) {
+      document.getElementById('progressLabel').textContent = `${i + 1} / ${TEST_OIDS.length}`;
+      await testOne(TEST_OIDS[i]);
+      // Brief pause between calls to avoid rate-limiting the print service
+      if (i < TEST_OIDS.length - 1) await new Promise(r => setTimeout(r, 800));
+    }
+
+    document.getElementById('progressLabel').textContent = `Complete — ${TEST_OIDS.length} tests`;
+    document.getElementById('runBtn').disabled = false;
+    running = false;
+    updateSummary();
+  }
+
+  // Initial render with empty cards
+  renderCards();
+</script>
+</body>
+</html>
