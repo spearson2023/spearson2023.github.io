@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Wildfire Home Defense Zone Report</title>
+<title>Wildfire Home Ignition Zones Report</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -400,7 +400,7 @@
 
 <!-- ── TOOLBAR ── -->
 <div id="toolbar">
-  <span class="brand">🔥 SanBern Wildfire Defense · Property Report</span>
+  <span class="brand">🔥 SanBern Wildfire Home Ignition Zones · Property Report</span>
   <div class="controls">
     <label for="objectIdInput">OBJECTID</label>
     <input type="number" id="objectIdInput" placeholder="e.g. 42" min="1"/>
@@ -420,7 +420,7 @@
 <!-- ── REPORT (populated by JS) ── -->
 <div id="report">
   <div class="rpt-header">
-    <div class="rpt-eyebrow">San Bernardino County · Wildfire Home Defense Zone Report</div>
+    <div class="rpt-eyebrow">San Bernardino County · Wildfire Home Ignition Zones Report</div>
     <div class="rpt-address" id="rptAddress">—</div>
     <div class="rpt-meta" id="rptMeta">—</div>
     <div class="rpt-badges" id="rptBadges"></div>
@@ -435,7 +435,7 @@
 
     <!-- PROPERTY -->
     <div class="section">
-      <div class="section-title">Property &amp; Parcel</div>
+      <div class="section-title">Property</div>
       <div class="field-grid">
         <div class="field">
           <span class="field-label">Parcel Number</span>
@@ -691,7 +691,7 @@
       document.getElementById('rptAddress').textContent =
         attr.FULLADDR || `Parcel ${attr.ParcelNumb || attr.ParcelNbr_AssessorDataJoin || 'Unknown'}`;
       document.getElementById('rptMeta').textContent =
-        `OBJECTID: ${attr.OBJECTID}  ·  Parcel: ${attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb || 'N/A'}  ·  Report generated: ${new Date().toLocaleString()}`;
+        `Parcel: ${attr.ParcelNbr_AssessorDataJoin || attr.ParcelNumb || 'N/A'}  ·  Report generated: ${new Date().toLocaleString()}`;
 
       // badges
       const badges = document.getElementById('rptBadges');
@@ -699,7 +699,6 @@
       badges.innerHTML += `<span class="badge badge-info">⬡ ${attr.LandType_Assessor || 'Land Type N/A'}</span>`;
       if (attr.CONST_YEAR) badges.innerHTML += `<span class="badge badge-info">Built ${attr.CONST_YEAR}</span>`;
       if (attr.NumberStories) badges.innerHTML += `<span class="badge badge-info">${attr.NumberStories} ${attr.NumberStories==1?'Story':'Stories'}</span>`;
-      badges.innerHTML += fireHazBadge(attr.FireHazardNuisance_Assessor);
 
       // ── MAP IMAGE via ArcGIS Print Service ──
       setStatus('Fetching map image…', 'rgba(255,255,255,0.5)');
