@@ -554,42 +554,51 @@
       </div>
     </div>
 
-    <!-- VEGETATION ZONES -->
+    <!-- WHIZ ZONE DETAIL — Fix 9 -->
     <div class="section">
-      <div class="section-title">Defensible Space — Vegetation Density by Zone</div>
-      <table class="veg-table">
-        <thead>
-          <tr>
-            <th>Zone</th>
-            <th>Short Vegetation</th>
-            <th>Medium Vegetation</th>
-            <th>High Vegetation</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>0–5 ft</td>
-            <td id="vShort5">—</td>
-            <td id="vMed5">—</td>
-            <td id="vHigh5">—</td>
-          </tr>
-          <tr>
-            <td>0–30 ft</td>
-            <td id="vShort30">—</td>
-            <td id="vMed30">—</td>
-            <td id="vHigh30">—</td>
-          </tr>
-          <tr>
-            <td>0–100 ft</td>
-            <td id="vShort100">—</td>
-            <td id="vMed100">—</td>
-            <td id="vHigh100">—</td>
-          </tr>
-        </tbody>
-      </table>
-      <p style="font-size:11px;color:#888;margin-top:10px;font-family:'IBM Plex Mono',monospace;">
-        Values represent pixel counts of classified vegetation within each defensible space ring. Higher values indicate greater vegetative fuel load.
-      </p>
+      <div class="section-title">WHIZ Zone Detail — Defensible Space</div>
+
+      <!-- Risk Summary Banner -->
+      <div id="whizRiskBanner" style="border:2px solid #ccc;border-radius:4px;padding:14px 16px;
+        text-align:center;margin-bottom:14px;background:#f9f9f9;">
+        <div style="font-size:11px;color:#666;font-family:'IBM Plex Mono',monospace;
+          letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">📊 Risk Assessment Summary</div>
+        <div id="whizRiskLabel" style="font-size:22px;font-weight:800;font-family:'IBM Plex Sans',sans-serif;
+          margin-bottom:6px;">—</div>
+        <div id="whizRiskDetail" style="font-size:12px;color:#666;font-family:'IBM Plex Mono',monospace;">—</div>
+      </div>
+
+      <!-- Three Zone Cards -->
+      <div id="whizZone5" class="whiz-zone" style="background:#fff5f5;border-left:4px solid #ff4444;
+        border-radius:3px;padding:12px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:13px;font-family:'IBM Plex Sans',sans-serif;margin-bottom:3px;">
+          🚨 IMMEDIATE ZONE (0–5 ft) <span id="whizBadge5" class="whiz-badge" style="background:#ff4444;"></span>
+        </div>
+        <div style="font-size:11px;color:#cc0000;font-weight:600;font-family:'IBM Plex Sans',sans-serif;
+          margin-bottom:6px;">⚠️ Critical Defense Zone</div>
+        <div id="whizList5" style="font-size:12px;line-height:1.8;font-family:'IBM Plex Sans',sans-serif;"></div>
+      </div>
+
+      <div id="whizZone30" class="whiz-zone" style="background:#fff8f0;border-left:4px solid #ff9933;
+        border-radius:3px;padding:12px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:13px;font-family:'IBM Plex Sans',sans-serif;margin-bottom:3px;">
+          🔶 INTERMEDIATE ZONE (5–30 ft) <span id="whizBadge30" class="whiz-badge" style="background:#ff9933;"></span>
+        </div>
+        <div style="font-size:11px;color:#cc6600;font-weight:600;font-family:'IBM Plex Sans',sans-serif;
+          margin-bottom:6px;">⚡ Moderate Risk Zone</div>
+        <div id="whizList30" style="font-size:12px;line-height:1.8;font-family:'IBM Plex Sans',sans-serif;"></div>
+      </div>
+
+      <div id="whizZone100" class="whiz-zone" style="background:#fffff0;border-left:4px solid #cccc00;
+        border-radius:3px;padding:12px;margin-bottom:4px;">
+        <div style="font-weight:700;font-size:13px;font-family:'IBM Plex Sans',sans-serif;margin-bottom:3px;">
+          🟡 EXTENDED ZONE (30–100 ft) <span id="whizBadge100" class="whiz-badge" style="background:#cccc00;"></span>
+        </div>
+        <div style="font-size:11px;color:#997700;font-weight:600;font-family:'IBM Plex Sans',sans-serif;
+          margin-bottom:6px;">📏 Reduced Risk Zone</div>
+        <div id="whizList100" style="font-size:12px;line-height:1.8;font-family:'IBM Plex Sans',sans-serif;"></div>
+      </div>
+
     </div>
 
   </div><!-- /rpt-body -->
@@ -727,16 +736,61 @@
       document.getElementById('fGas').innerHTML     = fmt(attr.NaturalGasSource_Assessor);
       document.getElementById('fFireHaz').innerHTML = fmt(attr.FireHazardNuisance_Assessor);
 
-      // ── VEGETATION ZONES ────────────────────
-      document.getElementById('vShort5').innerHTML   = vegPill(attr.ShortVeg_5FtZone);
-      document.getElementById('vMed5').innerHTML     = vegPill(attr.MedVeg_5FtZone);
-      document.getElementById('vHigh5').innerHTML    = vegPill(attr.HighVeg_5FtZone);
-      document.getElementById('vShort30').innerHTML  = vegPill(attr.ShortVeg_30FtZone);
-      document.getElementById('vMed30').innerHTML    = vegPill(attr.MedVeg_30FtZone);
-      document.getElementById('vHigh30').innerHTML   = vegPill(attr.HighVeg_30FtZone);
-      document.getElementById('vShort100').innerHTML = vegPill(attr.ShortVeg_100FtZone);
-      document.getElementById('vMed100').innerHTML   = vegPill(attr.MedVeg_100FtZone);
-      document.getElementById('vHigh100').innerHTML  = vegPill(attr.HighVeg_100FtZone);
+      // ── WHIZ ZONE DETAIL (Fix 9) ─────────────────────────────
+      const sv5   = attr.ShortVeg_5FtZone   || 0;
+      const mv5   = attr.MedVeg_5FtZone     || 0;
+      const hv5   = attr.HighVeg_5FtZone    || 0;
+      const sv30  = attr.ShortVeg_30FtZone  || 0;
+      const mv30  = attr.MedVeg_30FtZone    || 0;
+      const hv30  = attr.HighVeg_30FtZone   || 0;
+      const sv100 = attr.ShortVeg_100FtZone || 0;
+      const mv100 = attr.MedVeg_100FtZone   || 0;
+      const hv100 = attr.HighVeg_100FtZone  || 0;
+
+      const count5ft   = sv5 + mv5 + hv5;
+      const count30ft  = sv30 + mv30 + hv30;
+      const count100ft = sv100 + mv100 + hv100;
+      const totalVeg   = count5ft + count30ft + count100ft;
+
+      // Risk classification — matching old popup logic
+      let riskLevel = 'MINIMAL'; let riskColor = '#44aa44'; let riskIcon = '🟢';
+      if (count5ft > 1)                        { riskLevel = 'HIGH RISK';      riskColor = '#ff4444'; riskIcon = '🔴'; }
+      else if (count30ft >= 2)                 { riskLevel = 'MODERATE-HIGH';  riskColor = '#ff6600'; riskIcon = '🟠'; }
+      else if (count30ft > 1 || count100ft >= 2) { riskLevel = 'MODERATE';    riskColor = '#ff9933'; riskIcon = '🟡'; }
+      else if (count100ft > 0)                 { riskLevel = 'LOW';            riskColor = '#ffcc00'; riskIcon = '🟡'; }
+
+      // Risk banner
+      const banner = document.getElementById('whizRiskBanner');
+      banner.style.borderColor = riskColor;
+      document.getElementById('whizRiskLabel').innerHTML =
+        `<span style="color:${riskColor}">${riskIcon} ${riskLevel}</span>`;
+      document.getElementById('whizRiskDetail').textContent =
+        `Total Vegetation Types: ${totalVeg}  ·  🚨 Immediate: ${count5ft}  🔶 Intermediate: ${count30ft}  🟡 Extended: ${count100ft}`;
+
+      // Helper to build zone content
+      function buildZone(badgeId, listId, count, sv, mv, hv) {
+        const badge = document.getElementById(badgeId);
+        if (count > 0) {
+          badge.textContent = count;
+          badge.style.cssText = badge.style.cssText +
+            'color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:6px;font-weight:700;';
+        } else { badge.style.display = 'none'; }
+
+        const list = document.getElementById(listId);
+        if (count === 0) {
+          list.innerHTML = '<span style="color:#2e7d32;font-weight:700;">✅ Clear — No vegetation present</span>';
+        } else {
+          let html = '';
+          if (sv) html += '• 🌿 Short Vegetation<br>';
+          if (mv) html += '• 🌳 Medium Vegetation<br>';
+          if (hv) html += '• 🌲 High Vegetation<br>';
+          list.innerHTML = html;
+        }
+      }
+
+      buildZone('whizBadge5',   'whizList5',   count5ft,   sv5,   mv5,   hv5);
+      buildZone('whizBadge30',  'whizList30',  count30ft,  sv30,  mv30,  hv30);
+      buildZone('whizBadge100', 'whizList100', count100ft, sv100, mv100, hv100);
 
       // ── FOOTER ──────────────────────────────
       document.getElementById('rptGenerated').textContent =
@@ -758,41 +812,6 @@
   async function loadMapImage(geom, addr, selectedOid, parcelNbr) {
     const mapWrap = document.getElementById('rptMapWrap');
 
-    // ── Compute envelope from all rings ────────────────────────────
-    let envXmin = Infinity, envYmin = Infinity;
-    let envXmax = -Infinity, envYmax = -Infinity;
-    let cx = 0, cy = 0, ptCount = 0;
-
-    if (geom.rings) {
-      for (const ring of geom.rings) {
-        for (const [px, py] of ring) {
-          if (px < envXmin) envXmin = px;
-          if (px > envXmax) envXmax = px;
-          if (py < envYmin) envYmin = py;
-          if (py > envYmax) envYmax = py;
-          cx += px; cy += py; ptCount++;
-        }
-      }
-      cx /= ptCount; cy /= ptCount;
-    } else if (geom.x !== undefined) {
-      cx = geom.x; cy = geom.y;
-      envXmin = cx - 0.0005; envXmax = cx + 0.0005;
-      envYmin = cy - 0.0005; envYmax = cy + 0.0005;
-    } else {
-      mapWrap.innerHTML = '<div class="map-loading">Map not available</div>';
-      return;
-    }
-
-    // ── Proportional buffer — 60% of the envelope width/height ────
-    // Ensures full parcel is always visible with generous context
-    const wBuf = Math.max((envXmax - envXmin) * 0.6, 0.0006);
-    const hBuf = Math.max((envYmax - envYmin) * 0.6, 0.0006);
-
-    const xmin = envXmin - wBuf;
-    const xmax = envXmax + wBuf;
-    const ymin = envYmin - hBuf;
-    const ymax = envYmax + hBuf;
-
     mapWrap.innerHTML = '<div class="map-loading">Loading map with parcel overlay…</div>';
 
     // ── APN conversion ─────────────────────────────────────────────
@@ -802,6 +821,63 @@
     const apnExpr    = apn9 ? `APN = '${apn9}'` : '1=0';
     const notApnExpr = apn9 ? `APN <> '${apn9}'` : '1=1';
 
+    // ── Step 1: Query parcel geometry for accurate zoom extent ──────
+    // Falls back to building footprint geometry if parcel query fails
+    let sourceGeom = geom; // default to building footprint
+
+    if (apn9) {
+      try {
+        const parcelQueryUrl =
+          'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/' +
+          'San_Bernardino_County_Parcel_Dataset/FeatureServer/0/query?' +
+          `where=${encodeURIComponent(`APN = '${apn9}'`)}` +
+          '&outFields=APN&returnGeometry=true&outSR=4326&f=json';
+
+        const parcelRes  = await fetch(parcelQueryUrl);
+        const parcelData = await parcelRes.json();
+
+        if (parcelData.features && parcelData.features.length > 0 &&
+            parcelData.features[0].geometry) {
+          sourceGeom = parcelData.features[0].geometry;
+        }
+      } catch(e) {
+        console.warn('Parcel geometry query failed, using building footprint:', e);
+        // sourceGeom remains as building footprint — fallback is silent
+      }
+    }
+
+    // ── Step 2: Compute envelope from source geometry ───────────────
+    let envXmin = Infinity, envYmin = Infinity;
+    let envXmax = -Infinity, envYmax = -Infinity;
+
+    if (sourceGeom.rings) {
+      for (const ring of sourceGeom.rings) {
+        for (const [px, py] of ring) {
+          if (px < envXmin) envXmin = px;
+          if (px > envXmax) envXmax = px;
+          if (py < envYmin) envYmin = py;
+          if (py > envYmax) envYmax = py;
+        }
+      }
+    } else if (sourceGeom.x !== undefined) {
+      envXmin = sourceGeom.x - 0.0005; envXmax = sourceGeom.x + 0.0005;
+      envYmin = sourceGeom.y - 0.0005; envYmax = sourceGeom.y + 0.0005;
+    } else {
+      mapWrap.innerHTML = '<div class="map-loading">Map not available</div>';
+      return;
+    }
+
+    // ── Step 3: Proportional buffer — 40% of envelope width/height ──
+    // Using parcel geometry means we can reduce the buffer slightly
+    // since the parcel boundary itself is already the true extent
+    const wBuf = Math.max((envXmax - envXmin) * 0.4, 0.0005);
+    const hBuf = Math.max((envYmax - envYmin) * 0.4, 0.0005);
+
+    const xmin = envXmin - wBuf;
+    const xmax = envXmax + wBuf;
+    const ymin = envYmin - hBuf;
+    const ymax = envYmax + hBuf;
+
     // ── Web Map JSON — four layer stack ───────────────────────────
     const webMapJson = {
       mapOptions: {
@@ -809,6 +885,38 @@
         spatialReference: { wkid: 102100 }
       },
       operationalLayers: [
+
+        // ── Ring buffer zones (WHIZ) — default symbology shows red/orange/yellow zones
+        {
+          url: 'https://services6.arcgis.com/BStAUXLYRr0TgXhT/arcgis/rest/services/FinalMergedRingBuffersWildfire3ZonesAllBuildings/FeatureServer/0',
+          opacity: 0.5,
+          minScale: 0,
+          maxScale: 0
+        },
+
+        // ── Short vegetation tile layer
+        {
+          url: 'https://tiles.arcgis.com/tiles/BStAUXLYRr0TgXhT/arcgis/rest/services/SanBern_TallVegetation_Trees/MapServer',
+          opacity: 0.8,
+          minScale: 0,
+          maxScale: 0
+        },
+
+        // ── Medium vegetation tile layer
+        {
+          url: 'https://tiles.arcgis.com/tiles/BStAUXLYRr0TgXhT/arcgis/rest/services/SanBern_MediumVegetation_Shrubs/MapServer',
+          opacity: 0.8,
+          minScale: 0,
+          maxScale: 0
+        },
+
+        // ── Tall vegetation tile layer
+        {
+          url: 'https://tiles.arcgis.com/tiles/BStAUXLYRr0TgXhT/arcgis/rest/services/SanBern_TallVegetation_Trees2/MapServer',
+          opacity: 0.8,
+          minScale: 0,
+          maxScale: 0
+        },
 
         // Layer 1: All parcels except selected — white outline, no fill
         {
