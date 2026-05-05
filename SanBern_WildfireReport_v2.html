@@ -853,9 +853,10 @@
     mapWrap.innerHTML = '<div class="map-loading">Loading map with parcel overlay…</div>';
 
     // ── APN conversion ─────────────────────────────────────────────
-    // Building layer: ParcelNumb = "034912290" (9-digit zero-padded)
-    // Parcel layer:   APN = "034912290" (identical format — direct match)
-    const apn9       = String(parcelNbr || '').trim();
+
+
+    // Building ParcelNumb is 12-digit (e.g. "349121730000"); parcel dataset APN expects first 9 digits (e.g. "349121730").
+    const apn9       = String(parcelNbr || '').replace(/\D/g, '').slice(0, 9);
     const apnExpr    = apn9 ? `APN = '${apn9}'` : '1=0';
     const notApnExpr = apn9 ? `APN <> '${apn9}'` : '1=1';
 
